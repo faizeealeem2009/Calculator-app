@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#101923">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <title>Calculator</title>
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <style>
+    :root { color-scheme: dark; font-family: "Trebuchet MS", system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100svh; display: grid; place-items: center; background: radial-gradient(circle at 80% 0%, #245267, #101923 48%, #081018); color: #f5fbfa; }
+    main { width: min(100%, 430px); min-height: 100svh; padding: max(22px, env(safe-area-inset-top)) 18px max(22px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; }
+    header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 24px; }
+    h1 { margin: 0; color: #7cebd7; font-size: 15px; letter-spacing: 2px; }
+    #status { color: #9cafb5; font-size: 13px; }
+    .display { min-height: 130px; display: flex; flex-direction: column; justify-content: end; align-items: end; padding: 18px 4px 26px; overflow: hidden; }
+    #expression { max-width: 100%; overflow-x: auto; color: #8fa6aa; font-size: 20px; white-space: nowrap; }
+    #result { max-width: 100%; overflow-x: auto; color: #f5fbfa; font-size: clamp(38px, 12vw, 58px); font-weight: 700; white-space: nowrap; }
+    .keys { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-top: auto; }
+    button { min-height: 68px; border: 0; border-radius: 16px; background: linear-gradient(145deg, #293945, #17242d); box-shadow: 5px 5px 10px #070d12, -3px -3px 8px #263a45; color: #f5fbfa; font: inherit; font-size: 22px; font-weight: 600; -webkit-tap-highlight-color: transparent; }
+    button:active { transform: translateY(2px); box-shadow: inset 3px 3px 7px #091117; }
+    .action { color: #9cebdd; background: linear-gradient(145deg, #364c56, #203039); font-size: 18px; }
+    .equals { background: linear-gradient(145deg, #24d5ba, #078878); color: #06211d; }
+    @media (min-height: 700px) { button { min-height: 74px; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header><h1>CALCULATOR</h1><span id="status">Ready</span></header>
+    <section class="display" aria-live="polite"><div id="expression"></div><div id="result"></div></section>
+    <section class="keys" aria-label="Calculator keypad">
+      <button class="action" data-action="clear">AC</button><button class="action" data-action="backspace">⌫</button><button class="action" data-value="%">%</button><button class="action" data-value="/">÷</button>
+      <button data-value="7">7</button><button data-value="8">8</button><button data-value="9">9</button><button class="action" data-value="*">×</button>
+      <button data-value="4">4</button><button data-value="5">5</button><button data-value="6">6</button><button class="action" data-value="-">−</button>
+      <button data-value="1">1</button><button data-value="2">2</button><button data-value="3">3</button><button class="action" data-value="+">+</button>
+      <button class="action" data-action="sign">±</button><button data-value="0">0</button><button data-value=".">.</button><button class="equals" data-action="calculate">=</button>
+    </section>
+  </main>
+  <script>
+    const expression = document.querySelector("#expression");
+    const result = document.querySelector("#result");
+    const status = document.querySelector("#status");
+    let value = "";
+    const render = () => { expression.textContent = value; result.textContent = value; };
+    const add = (part) => { if (status.textContent !== "Ready") { value = ""; status.textContent = "Ready"; } value += part; render(); };
+    const clear = () => { value = ""; status.textContent = "Ready"; render(); };
+    const calculate = () => {
+      if (!value) return;
+      try {
+        if (!/^[0-9.+*/%()\-\s]+$/.test(value)) throw new Error();
+        const answer = Function('"use strict"; return (' + value + ')')();
+        if (!Number.isFinite(answer)) throw new Error();
+        value = String(Number.isInteger(answer) ? answer : Number(answer.toFixed(10)));
+        status.textContent = "Result"; render();
+      } catch { status.textContent = "Invalid expression"; }
+    };
+    document.querySelectorAll("button").forEach((button) => button.addEventListener("click", () => {
+      if (button.dataset.value) add(button.dataset.value);
+      if (button.dataset.action === "clear") clear();
+      if (button.dataset.action === "backspace") { value = value.slice(0, -1); render(); }
+      if (button.dataset.action === "sign" && value) { value = value.startsWith("-") ? value.slice(1) : "-" + value; render(); }
+      if (button.dataset.action === "calculate") calculate();
+    }));
+    document.addEventListener("keydown", (event) => { if (/^[0-9.+*/%()\-]$/.test(event.key)) add(event.key); else if (event.key === "Backspace") { value = value.slice(0, -1); render(); } else if (event.key === "Enter") calculate(); else if (event.key === "Escape") clear(); });
+    if ("serviceWorker" in navigator) window.addEventListener("load", () => navigator.serviceWorker.register("service-worker.js"));
+  </script>
+</body>
+</html>
